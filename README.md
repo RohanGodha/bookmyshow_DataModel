@@ -1,1 +1,84 @@
 # bookmyshow_DataModel
+
+-- BookMyShow Theatre Show Management — MySQL schema & sample data
+-- Self-contained script: creates database, tables, inserts sample rows, and runs the P2 query.
+-- MySQL-compatible. You can execute this whole file in one go.
+
+-- ===== 0) Database =====
+CREATE DATABASE IF NOT EXISTS bookmyshow CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE bookmyshow;
+
+-- ===== 1) Drop existing objects (for idempotent re-runs) =====
+SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS shows;
+DROP TABLE IF EXISTS movies;
+DROP TABLE IF EXISTS theatres;
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- ===== 2) Tables =====
+
+-- Table: theatres
+CREATE TABLE theatres (
+    theatre_id   INT PRIMARY KEY AUTO_INCREMENT,
+    theatre_name VARCHAR(100) NOT NULL,
+    location     VARCHAR(100) NOT NULL,
+    UNIQUE KEY uk_theatre_name_location (theatre_name, location)
+) ENGINE=InnoDB;
+
+-- Table: movies
+CREATE TABLE movies (
+    movie_id     INT PRIMARY KEY AUTO_INCREMENT,
+    movie_title  VARCHAR(150) NOT NULL,
+    language     VARCHAR(50)  NOT NULL,
+    format       VARCHAR(20)  NOT NULL,    -- e.g., 2D, 3D, IMAX 3D
+    certificate  VARCHAR(5)   NOT NULL     -- e.g., UA, A
+) ENGINE=InnoDB;
+
+-- Table: shows  (avoid reserved keyword SHOW by using plural lowercase 'shows')
+CREATE TABLE shows (
+    show_id     INT PRIMARY KEY AUTO_INCREMENT,
+    movie_id    INT NOT NULL,
+    theatre_id  INT NOT NULL,
+    show_date   DATE NOT NULL,
+    show_time   TIME NOT NULL,
+    screen_type VARCHAR(50),               -- e.g., 4K Dolby 7.1, Playhouse
+    CONSTRAINT fk_shows_movie    FOREIGN KEY (movie_id)   REFERENCES movies(movie_id),
+    CONSTRAINT fk_shows_theatre  FOREIGN KEY (theatre_id) REFERENCES theatres(theatre_id),
+    KEY idx_shows_date_theatre (theatre_id, show_date),
+    KEY idx_shows_movie (movie_id)
+) ENGINE=InnoDB;
+
+-- ===== 3) Sample data =====
+
+INSERT INTO theatres (theatre_name, location) VALUES
+('PVR Nexus', 'Forum Mall');
+
+INSERT INTO movies (movie_title, language, format, certificate) VALUES
+('Dasara', 'Telugu', '2D', 'UA'),
+('Kisi Ka Bhai Kisi Ki Jaan', 'Hindi', '2D', 'UA'),
+('Tu Jhoothi Main Makkar', 'Hindi', '2D', 'UA'),
+('Avatar: The Way of Water', 'English', '3D', 'UA');
+
+INSERT INTO shows (movie_id, theatre_id, show_date, show_time, screen_type) VALUES
+(1, 1, '2023-04-25', '12:15:00', '4K Dolby 7.1'),
+(2, 1, '2023-04-25', '13:00:00', '4K Atmos 2K'),
+(2, 1, '2023-04-25', '16:10:00', '4K Atmos 2K'),
+(2, 1, '2023-04-25', '18:20:00', '4K Dolby 7.1'),
+(2, 1, '2023-04-25', '19:20:00', '4K Atmos 2K'),
+(3, 1, '2023-04-25', '13:15:00', '4K Atmos'),
+(4, 1, '2023-04-25', '13:20:00', 'Playhouse 4K');
+
+-- ===== 4) P2 — Query: list all shows on a given date at a given theatre =====
+-- Replace the literals in the WHERE clause as needed.
+SELECT 
+    m.movie_title,
+    m.language,
+    m.format,
+    s.show_time,
+    s.screen_type
+FROM shows s
+JOIN movies m   ON s.movie_id = m.movie_id
+JOIN theatres t ON s.theatre_id = t.theatre_id
+WHERE s.show_date = '2023-04-25'
+  AND t.theatre_name = 'PVR Nexus'
+ORDER BY s.show_time;
